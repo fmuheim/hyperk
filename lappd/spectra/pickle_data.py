@@ -133,8 +133,8 @@ data           = pd.read_csv('151001_151716_Ch3.csv',names=['nan1','nan2','nan3'
 #data_ped       = pd.read_csv('151005_161543_Ch3.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 
 # Using 100ns frame window and resolution of 2500
+'''
 data_ped       = pd.read_csv('151006_092037.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
-print "number of entries", len(data_ped)
 data                  = pd.read_csv('151006_091754.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 data = data.append(     pd.read_csv('151006_094857.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
 data = data.append(     pd.read_csv('151006_095026.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
@@ -145,9 +145,22 @@ data = data.append(     pd.read_csv('151006_104235.csv',names=['nan1','nan2','na
 data = data.append(     pd.read_csv('151006_104431.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
 data = data.append(     pd.read_csv('151006_104607.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
 data = data.append(     pd.read_csv('151006_104730.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
+'''
+nPoints = 2500
+window = 100e-9
 # Using nominal 40ns window
 #data           = pd.read_csv('151005_141912_Ch3.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 
+# Using 20ns frame window and resolution of 1000
+data_name     = '151009_155610'
+data_ped_name = '151009_161113'
+data                  = pd.read_csv(data_name   +'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+data = data.append(     pd.read_csv('151009_163419.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
+data = data.append(     pd.read_csv('151009_163542.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
+data = data.append(     pd.read_csv('151009_163739.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
+data_ped              = pd.read_csv(data_ped_name+'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+nPoints = 1000
+window = 40e-9
 
 print "number of entries", len(data)
 
@@ -159,8 +172,6 @@ data_gate      = pd.read_csv('151001_141511_Ch2.csv',names=['nan1','nan2','nan3'
 data           = pd.read_csv('151001_141511_Ch3.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4])
 '''
 
-nPoints = 2500
-window = 100e-9
 nEvents = len(data)/nPoints
 nEvents_ped = len(data_ped)/nPoints
 
@@ -191,6 +202,6 @@ for i in range(nEvents_ped):
 data['filtered_voltage'] = pd.Series(filtered_voltages, index = data.index)
 data_ped['filtered_voltage'] = pd.Series(filtered_voltages_ped, index = data_ped.index)
 
-data.to_pickle('151006_091754.pkl')
-data_ped.to_pickle('151006_092037.pkl')
+data.to_pickle(data_name+'.pkl')
+data_ped.to_pickle(data_ped_name+'.pkl')
 
