@@ -94,23 +94,26 @@ max_voltages = data.loc[grouped_data.voltage.idxmin()]
 max_voltages.plot(kind='scatter',x='time',y='voltage', ax = axes[0])
 max_voltages_ped = data_ped.loc[grouped_data_ped.voltage.idxmin()]
 max_voltages_ped.plot(kind='scatter',x='time',y='voltage', ax = axes[1])
-plt.show()
+fig.savefig('max_voltage_vs_time.png')
 
 # Convert the voltage into a collected charge and sum over all voltages in the time window
 scale = -dt/resistance*1e12/1e3 #for picoColoumbs and to put voltage back in V
 q     = scale*grouped_data    .voltage.sum()
 q_ped = scale*grouped_data_ped.voltage.sum()
 
+print q
+
 # Plot the spectrum of collected charge
 loC =  5.
 hiC =  8.
 nBins = 260
 width = float(hiC-loC)/nBins
-ax = q.plot(kind='hist', bins = np.arange(loC, hiC + width, width), logy = True, color='r', alpha = 0.5)
-ax.set_xlabel("charge [pC]")
-ax.set_ylabel("Entries / (%0.2f pC)" % width)
-ax.set_xlim(loC, hiC)
-plt.show()
+fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(6, 6))
+q.plot(kind='hist', bins = np.arange(loC, hiC + width, width), logy = True, color='r', alpha = 0.5)
+axes.set_xlabel("charge [pC]")
+axes.set_ylabel("Entries / (%0.2f pC)" % width)
+axes.set_xlim(loC, hiC)
+fig.savefig('charge_spectrum.png')
 
 # Now show the oscillioscope traces of a few events
 interesting = []
@@ -169,7 +172,7 @@ if len(interesting) > 0 and len(interesting2) > 0:
         axes[1,0].set_ylabel("voltage [mV]")
         axes[2,0].set_ylabel("voltage [mV]")
         k += 1
-plt.show()
+fig.savefig('oscilloscope_traces.png')
 
 # Integrate the charge spectrum above some threshold to compute the gain
 tot = 0.

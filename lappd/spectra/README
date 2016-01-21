@@ -24,3 +24,9 @@ Requirements
 ToDo
 
    * Add command line arguments to allow paths to be specified at run-time.
+
+Example plots
+
+![Alt text](plots/max_voltage_vs_time.png?raw=true "Title")
+![Alt text](plots/charge_spectrum.png?raw=true "Title")
+![Alt text](plots/oscilloscope_traces.png?raw=true "Title")
