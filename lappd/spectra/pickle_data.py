@@ -1,3 +1,4 @@
+#!/usr/bin/env ipython
 import pandas as pd
 from scipy import signal
 

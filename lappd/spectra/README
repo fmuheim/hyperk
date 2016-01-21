@@ -1,50 +1,26 @@
-HV 2.2kV
-LED 2.1V
+Greig Cowan, 2015
 
-FastFrame
-40ns duration
-1000 record length
-6779 events
+This code can be used to process the spectra obtained from a Tektronic oscilloscope
+operating in FastFrame mode. The code produces the following plots
 
-Channel J11
+   * 2D distribution of maximum voltages recorded for each event versus the time in the event
+   * Integrated charge spectrum
+   * Some example oscilloscope traces (useful for debugging)
 
-151001_113045_ch2 gate, _ch3 upper mid  - some signal cut off from these events
-151001_113709_ch2 gate, _ch3 upper mid  - some signal cut off from these events
+The code operates in a two stage procedure.
 
-151001_140919_ch2 gate, _ch3 upper mid
-151001_140919_ch2 gate, _ch3 upper mid
-151001_141206_ch2 gate, _ch3 upper mid
-151001_141206_ch2 gate, _ch3 upper mid
+   1. First process the .csv files into python .pkl files by modifing pickle_data.py to
+   include the path to your .csv file. Then run
+      $ ./pickle_data.py
 
-FastFrame
-100ns duration
-1000 record length
-3700 events
+   2. To make the plots modify make_spectra.py to put the name of the pickle file and then run
+      $ ./make_spectra.py
 
-151001_141511_ch2 gate, _ch3 upper mid
-151001_141511_ch2 gate, _ch3 upper mid
+Requirements
 
-HV 2.3kV
-LED 0V
+   * The code requires ipython, numpy, pandas and matplotlib. All of these should be available
+   with any modern python distribution (i.e., Anaconda).
 
-151001_151307_ch2 gate, _ch3 upper mid
-151001_151307_ch2 gate, _ch3 upper mid
+ToDo
 
-HV 2.2kV
-LED 3.0V
-
-151001_151716_ch2 gate, _ch3 upper mid
-151001_141716_ch2 gate, _ch3 upper mid
-
-HV 2.3kV
-LED 2.1V
-
-151001_152045_ch2 gate, _ch3 upper mid
-151001_152045_ch2 gate, _ch3 upper mid
-
-HV 2.3kV
-LED 0V
-
-151001_152343_ch2 gate, _ch3 upper mid
-151001_152343_ch2 gate, _ch3 upper mid
-
+   * Add command line arguments to allow paths to be specified at run-time.
