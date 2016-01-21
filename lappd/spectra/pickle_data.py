@@ -146,11 +146,15 @@ data = data.append(     pd.read_csv('151006_104431.csv',names=['nan1','nan2','na
 data = data.append(     pd.read_csv('151006_104607.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
 data = data.append(     pd.read_csv('151006_104730.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3}), ignore_index = True)
 '''
+'''
 nPoints = 2500
 window = 100e-9
 # Using nominal 40ns window
 #data           = pd.read_csv('151005_141912_Ch3.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 
+#HV 2.55kV
+#LED 1.0V
+#J7
 # Using 20ns frame window and resolution of 1000
 data_name     = '151009_155610'
 data_ped_name = '151009_161113'
@@ -161,6 +165,31 @@ data = data.append(     pd.read_csv('151009_163739.csv',names=['nan1','nan2','na
 data_ped              = pd.read_csv(data_ped_name+'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 nPoints = 1000
 window = 40e-9
+
+#HV 2.55kV
+#LED 1.0V
+#J11
+data_name     = '151009_171100_Ch1'
+data_ped_name = '151009_171617_Ch1'
+#J9
+data_name     = '151009_171100_Ch3'
+data_ped_name = '151009_171617_Ch3'
+#J13
+#data_name     = '151009_171100_Ch4'
+#data_ped_name = '151009_171617_Ch4'
+data                  = pd.read_csv(data_name    +'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+data_ped              = pd.read_csv(data_ped_name+'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+nPoints = 1000
+window = 40e-9
+'''
+
+data_name     = '160121_102056_Ch1'
+data_ped_name = '160121_102056_Ch1'
+data                  = pd.read_csv(data_name    +'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+data_ped              = pd.read_csv(data_ped_name+'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
+nPoints = 1250
+window = 100e-9
+
 
 print "number of entries", len(data)
 
