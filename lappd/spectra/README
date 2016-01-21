@@ -27,6 +27,6 @@ ToDo
 
 Example plots
 
-![My image](plots/max_voltage_vs_time.png?raw=true "Title")
+![My image](gcowan.github.com/hyperk/lappd/spectra/plots/max_voltage_vs_time.png?raw=true "Title")
 ![My image](plots/charge_spectrum.png?raw=true "Title")
 ![My image](plots/oscilloscope_traces.png?raw=true "Title")
