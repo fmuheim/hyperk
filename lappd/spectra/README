@@ -27,6 +27,6 @@ ToDo
 
 Example plots
 
-![Alt tag](plots/max_voltage_vs_time.png?raw=true "Title")
-![Alt tag](plots/charge_spectrum.png?raw=true "Title")
-![Alt tag](plots/oscilloscope_traces.png?raw=true "Title")
+![My image](plots/max_voltage_vs_time.png?raw=true "Title")
+![My image](plots/charge_spectrum.png?raw=true "Title")
+![My image](plots/oscilloscope_traces.png?raw=true "Title")
