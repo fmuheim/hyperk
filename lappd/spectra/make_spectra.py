@@ -135,11 +135,17 @@ q_ped.plot(kind='hist', title = 'LED off', bins = np.arange(loC, hiC + width, wi
 
 from scipy.stats import norm
 mu, std = norm.fit(q_ped.values)
-print mu, std
-x = np.linspace(loC, hiC, nBins)
-pdf = n_events*norm.pdf(x, mu, std)/nBins
+mu_ped  = q_ped.mean()
+std_ped = q_ped.std()
+print
+print "Fitted mean and standard deviation of the pedestal    : %0.3f, %0.3f  " % (mu, std)
+print "Calculated mean and standard deviation of the pedestal: %0.3f, %0.3f\n" % (mu_ped, std_ped)
 
-plt.plot(x, pdf, 'k', linewidth = 2)
+# uncomment these lines if you want to plot the fitted Gaussian
+#x = np.linspace(loC, hiC, nBins)
+#pdf = n_events*norm.pdf(x, mu, std)/nBins
+#plt.plot(x, pdf, 'k', linewidth = 2)
+
 axes[0].set_xlabel("charge [pC]")
 axes[0].set_ylabel("Entries / (%0.2f pC)" % width)
 axes[0].set_xlim(loC, hiC)
@@ -150,47 +156,33 @@ axes[1].set_xlim(loC, hiC)
 axes[1].set_ylim(1, 1e4)
 fig.savefig('charge_spectrum.png')
 
+# Compute the mean of the collected charge above some threshold (which is defined in terms of the pedestal) to compute the gain
+threshold = mu_ped + 3*std_ped
+signal = q[q > threshold]
+mean_signal_charge = signal.mean()
+gain = mean_signal_charge*1.e-12/1.602e-19/1e7
+print "Threshold set at %0.3f pC" % threshold
+print "Gain of the photo-sensor is %0.2f x 10^7\n" % gain
+
 # Now show the oscillioscope traces of a few events
 interesting = []
 interesting2 = []
 interesting3 = []
 
-# First get the event IDs of the events to look at
-for eventID, group in grouped_data:
-    print_progress(eventID, n_events)
-    '''
-    # Find the peak and define a window around it for the integration
-    # Watch-out for the range going out of bounds for the event
-    lo =  eventID   *n_points + low_offset
-    hi = (eventID+1)*n_points - high_offset
-    i = group.voltage.idxmin()
-    lower_bound_id = i - 4*rise_time_in_samples
-    upper_bound_id = i + 4*fall_time_in_samples
-    lower_bound_id = lower_bound_id if lower_bound_id > lo else lo
-    upper_bound_id = upper_bound_id if upper_bound_id < hi else hi
-    '''
-    q_subset = q[eventID]
-    if q_subset > loC and q_subset < loC + 0.5:
-        interesting.append(eventID)
-    if q_subset > loC + 0.5 and q_subset < loC + 1.:
-        interesting2.append(eventID)
-    if q_subset > loC + 1. and q_subset < hiC:
-        interesting3.append(eventID)
+subset1 = (q[(q > mu_ped      ) & (q < mu_ped + 0.5)]).sample(n=4).index
+subset2 = (q[(q > mu_ped + 0.5) & (q < mu_ped + 1.0)]).sample(n=4).index
+subset3 = (q[(q > mu_ped + 1.0) & (q < hiC         )]).sample(n=4).index
 
 # Plot some interesting events
-if len(interesting) > 0 and len(interesting2) > 0:
-  fig, axes = plt.subplots(nrows=3, ncols=4, sharex=True, sharey=True, figsize=(20, 10))
-  from numpy.random import randint
+if len(subset1) > 0 and len(subset2) > 0 and len(subset3) > 0:
+  trace, trace_ax = plt.subplots(nrows=3, ncols=4, sharex=True, sharey=True, figsize=(20, 10))
   for i in range(4):
-        k  = randint(0, len(interesting))
-        k2 = randint(0, len(interesting2))
-        k3 = randint(0, len(interesting3))
-        grouped_data.get_group(interesting [k ]).plot(x='time',y='voltage'         ,ax=axes[0,i], legend=False)
-        grouped_data.get_group(interesting [k ]).plot(x='time',y='filtered_voltage',ax=axes[0,i], legend=False)
-        grouped_data.get_group(interesting2[k2]).plot(x='time',y='voltage'         ,ax=axes[1,i], legend=False)
-        grouped_data.get_group(interesting2[k2]).plot(x='time',y='filtered_voltage',ax=axes[1,i], legend=False)
-        grouped_data.get_group(interesting3[k3]).plot(x='time',y='voltage'         ,ax=axes[2,i], legend=False)
-        grouped_data.get_group(interesting3[k3]).plot(x='time',y='filtered_voltage',ax=axes[2,i], legend=False)
+        grouped_data.get_group(subset1[i]).plot(x='time',y='voltage'         ,ax=trace_ax[0,i], legend=False)
+        grouped_data.get_group(subset1[i]).plot(x='time',y='filtered_voltage',ax=trace_ax[0,i], legend=False)
+        grouped_data.get_group(subset2[i]).plot(x='time',y='voltage'         ,ax=trace_ax[1,i], legend=False)
+        grouped_data.get_group(subset2[i]).plot(x='time',y='filtered_voltage',ax=trace_ax[1,i], legend=False)
+        grouped_data.get_group(subset3[i]).plot(x='time',y='voltage'         ,ax=trace_ax[2,i], legend=False)
+        grouped_data.get_group(subset3[i]).plot(x='time',y='filtered_voltage',ax=trace_ax[2,i], legend=False)
         '''
         # This plots the points defining the integration region
         data[bounds[interesting [k ]][0]:bounds[interesting [k ]][0]+1].plot(x='time',y='filtered_voltage',ax=axes[0,i], legend=False, style='o')
@@ -200,28 +192,10 @@ if len(interesting) > 0 and len(interesting2) > 0:
         data[bounds[interesting3[k3]][0]:bounds[interesting3[k3]][0]+1].plot(x='time',y='filtered_voltage',ax=axes[2,i], legend=False, style='o')
         data[bounds[interesting3[k3]][1]:bounds[interesting3[k3]][1]+1].plot(x='time',y='filtered_voltage',ax=axes[2,i], legend=False, style='o')
         '''
-        axes[0,i].set_xlabel("")
-        axes[2,i].set_xlabel("")
-        axes[2,i].set_xlabel("time [ns]")
-        axes[0,0].set_ylabel("voltage [mV]")
-        axes[1,0].set_ylabel("voltage [mV]")
-        axes[2,0].set_ylabel("voltage [mV]")
-        k += 1
-  fig.savefig('oscilloscope_traces.png')
-
-# Integrate the charge spectrum above some threshold to compute the gain
-tot = 0.
-nEventsAboveThreshold = 0
-threshold = loC + 0.5 # This threshold will have to change depending on the spectrum
-for Q in q:
-    if Q > threshold:
-        tot += Q
-        nEventsAboveThreshold += 1
-if nEventsAboveThreshold > 0:
-    gain = tot*1.e-12/1.602e-19/nEventsAboveThreshold/1e7
-    print "\nTotal charge collected above %0.2f pC threshold = %0.2f pC" % (threshold, tot)
-    print "Corresponding to a gain = %0.2f x 10^7" % gain
-else:
-    print "No events above threshold; cannot compute gain."
-
-
+        trace_ax[0,i].set_xlabel("")
+        trace_ax[1,i].set_xlabel("")
+        trace_ax[2,i].set_xlabel("time [ns]")
+        trace_ax[0,0].set_ylabel("voltage [mV]")
+        trace_ax[1,0].set_ylabel("voltage [mV]")
+        trace_ax[2,0].set_ylabel("voltage [mV]")
+  trace.savefig('oscilloscope_traces.png')
