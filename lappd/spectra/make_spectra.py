@@ -14,69 +14,11 @@ def print_progress(count, n_events):
     sys.stdout.write("\rPercent: [{0}] {1}%".format(hashes + spaces, int(round(percent * 100))))
     sys.stdout.flush()
 
-#HV 2.55kV
-#LED 1.0V
-#J7
-# Using 100ns frame window and resolution of 2500
-data_name     = '151006_091754'
-data_ped_name = '151006_092037'
-n_points = 2500
-window = 100e-9
-
-#HV 2.55kV
-#LED 1.0V
-#J7
 # Using 40ns frame window and resolution of 1000
-data_name     = '151009_155610'
-data_ped_name = '151009_161113'
+data_name     = '160122_120123_Ch1'
+data_ped_name = '160122_120304_Ch1'
 n_points = 1000
 window = 40e-9
-
-#HV 2.55kV
-#LED 1.0V
-#J11
-# Using 40ns frame window and resolution of 1000
-data_name     = '160122_120123_Ch1'#160519_111505_Ch1'
-data_ped_name = '160122_120304_Ch1'#160519_113501_Ch1'
-#J9 turns out to be broken
-# Using 40ns frame window and resolution of 1000
-#data_name     = '151009_171100_Ch3'
-#data_ped_name = '151009_171617_Ch3'
-#J13
-# Using 40ns frame window and resolution of 1000
-#data_name     = '151009_171100_Ch4'
-#data_ped_name = '151009_171617_Ch4'
-n_points = 1000
-window = 40e-9
-
-'''
-data_name     = '160122_101920_Ch1'
-data_ped_name = '160122_101920_Ch1'
-n_points = 1250
-window = 100e-9
-
-
-data_name     = '160122_104308_Ch1'
-data_ped_name = '160122_104308_Ch1'
-n_points = 10000
-window = 400e-9
-
-data_name     = '160122_105757_Ch1'
-data_ped_name = '160122_105757_Ch1'
-n_points = 5000
-window = 200e-9
-
-
-data_name     = '160122_111749_Ch1'
-data_ped_name = '160122_111749_Ch1'
-n_points = 2500
-window = 100e-9
-
-data_name     = '2550v_Ch1'
-data_ped_name = '2550v_Ch1off'
-n_points = 1000
-window = 40e-9
-'''
 
 data           = pd.read_pickle(data_name+'.pkl')
 data_ped       = pd.read_pickle(data_ped_name+'.pkl')
@@ -110,13 +52,13 @@ else:
     data_ped = data_ped[(np.abs(data_ped.voltage)<50)]
 
 mean_ped_voltage = data.filtered_voltage.mean() - 2.
-print mean_ped_voltage
+print "Baseline voltage of the pedestal", mean_ped_voltage
 min_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.min()
 max_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.max()
 diff = (max_TOT - min_TOT) > 0.7
 diff = diff[diff]
 good_data = data[data.eventID.isin(diff.index)]
-print len(diff)
+print "Number of good pulses", len(diff)
 
 # Group the data into events (i.e., separate triggers)
 grouped_data = data.groupby(['eventID'])
@@ -175,14 +117,22 @@ axes[1].set_ylim(1, 1e4)
 fig.savefig('charge_spectrum.png')
 
 # Compute the mean of the collected charge above some threshold (which is defined in terms of the pedestal) to compute the gain
+from math import sqrt
+'''
 threshold = 3*std_ped
 signal = q[q > threshold]
 mean_signal_charge = signal.mean()
 gain  = mean_signal_charge*1.e-12/1.602e-19/1e7
+gain_err = mean_signal_charge*1.e-12/1.602e-19/1e7/sqrt(len(signal))
 gain2 = q_good.mean()*1.e-12/1.602e-19/1e7
-print "Threshold set at %0.3f pC" % threshold
-print "Gain  of the photo-sensor is %0.2f x 10^7\n" % gain
-print "Gain2 of the photo-sensor is %0.2f x 10^7\n" % gain2
+'''
+gain3 = q_good.sum()*1.e-12/1.602e-19/1e7/len(q_good)
+gain3_err = q_good.sum()*1.e-12/1.602e-19/1e7/len(q_good)/sqrt(len(q_good))
+
+#print "Threshold set at %0.3f pC" % threshold
+#print "Gain  of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain, gain_err)
+#print "Gain2 of the photo-sensor is %0.3f x 10^7\n" % gain2
+print "Gain of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain3, gain3_err)
 
 # Now show the oscillioscope traces of a few events
 subset1 = (q[(q > mu_ped      ) & (q < mu_ped + 0.5)]).sample(n=4).index
