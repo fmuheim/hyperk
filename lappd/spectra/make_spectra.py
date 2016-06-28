@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import matplotlib
 matplotlib.style.use('ggplot')
+matplotlib.rcParams.update({'font.size': 12})
 
 def print_progress(count, n_events):
     percent = float(count) / n_events
@@ -35,8 +36,8 @@ window = 40e-9
 #LED 1.0V
 #J11
 # Using 40ns frame window and resolution of 1000
-data_name     = '151009_171100_Ch1'
-data_ped_name = '151009_171617_Ch1'
+data_name     = '160122_120123_Ch1'#160519_111505_Ch1'
+data_ped_name = '160122_120304_Ch1'#160519_113501_Ch1'
 #J9 turns out to be broken
 # Using 40ns frame window and resolution of 1000
 #data_name     = '151009_171100_Ch3'
@@ -48,6 +49,7 @@ data_ped_name = '151009_171617_Ch1'
 n_points = 1000
 window = 40e-9
 
+'''
 data_name     = '160122_101920_Ch1'
 data_ped_name = '160122_101920_Ch1'
 n_points = 1250
@@ -70,11 +72,11 @@ data_ped_name = '160122_111749_Ch1'
 n_points = 2500
 window = 100e-9
 
-data_name     = '160122_120123_Ch1'
-data_ped_name = '160122_120304_Ch1'
+data_name     = '2550v_Ch1'
+data_ped_name = '2550v_Ch1off'
 n_points = 1000
 window = 40e-9
-
+'''
 
 data           = pd.read_pickle(data_name+'.pkl')
 data_ped       = pd.read_pickle(data_ped_name+'.pkl')
@@ -107,9 +109,19 @@ else:
     data = data[(np.abs(data.voltage)<50)]
     data_ped = data_ped[(np.abs(data_ped.voltage)<50)]
 
+mean_ped_voltage = data.filtered_voltage.mean() - 2.
+print mean_ped_voltage
+min_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.min()
+max_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.max()
+diff = (max_TOT - min_TOT) > 0.7
+diff = diff[diff]
+good_data = data[data.eventID.isin(diff.index)]
+print len(diff)
+
 # Group the data into events (i.e., separate triggers)
 grouped_data = data.groupby(['eventID'])
 grouped_data_ped = data_ped.groupby(['eventID'])
+grouped_data_good = good_data.groupby(['eventID'])
 
 # Plot the time position and voltage of the max voltage in each event
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharey = True)
@@ -121,17 +133,9 @@ fig.savefig('max_voltage_vs_time.png')
 
 # Convert the voltage into a collected charge and sum over all voltages in the time window
 scale = -dt/resistance*1e12/1e3 #for picoColoumbs and to put voltage back in V
-q     = scale*grouped_data    .voltage.sum()
-q_ped = scale*grouped_data_ped.voltage.sum()
-
-# Plot the spectrum of collected charge
-loC =  1.
-hiC =  6.
-nBins = 250
-width = float(hiC-loC)/nBins
-fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
-q.plot(kind='hist', title = 'LED on', bins = np.arange(loC, hiC + width, width), logy = True, color='r', alpha = 0.5, ax = axes[0])
-q_ped.plot(kind='hist', title = 'LED off', bins = np.arange(loC, hiC + width, width), logy = True, color='b', alpha = 0.5, ax = axes[1])
+q     = scale*grouped_data    .filtered_voltage.sum()
+q_ped = scale*grouped_data_ped.filtered_voltage.sum()
+q_good = scale*grouped_data_good.filtered_voltage.sum()
 
 from scipy.stats import norm
 mu, std = norm.fit(q_ped.values)
@@ -140,6 +144,20 @@ std_ped = q_ped.std()
 print
 print "Fitted mean and standard deviation of the pedestal    : %0.3f, %0.3f  " % (mu, std)
 print "Calculated mean and standard deviation of the pedestal: %0.3f, %0.3f\n" % (mu_ped, std_ped)
+
+q = q - mu_ped
+q_ped = q_ped - mu_ped
+q_good = q_good - mu_ped
+
+# Plot the spectrum of collected charge
+loC =  -1
+hiC =  4.
+nBins = 100
+width = float(hiC-loC)/nBins
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+q.plot(kind='hist', title = 'LED on', bins = np.arange(loC, hiC + width, width), logy = True, color='r', alpha = 0.5, ax = axes[0])
+q_good.plot(kind='hist', title = 'LED on', bins = np.arange(loC, hiC + width, width), logy = True, color='g', alpha = 0.2, ax = axes[0])
+q_ped.plot(kind='hist', title = 'LED off', bins = np.arange(loC, hiC + width, width), logy = True, color='b', alpha = 0.5, ax = axes[1])
 
 # uncomment these lines if you want to plot the fitted Gaussian
 #x = np.linspace(loC, hiC, nBins)
@@ -157,23 +175,28 @@ axes[1].set_ylim(1, 1e4)
 fig.savefig('charge_spectrum.png')
 
 # Compute the mean of the collected charge above some threshold (which is defined in terms of the pedestal) to compute the gain
-threshold = mu_ped + 3*std_ped
+threshold = 3*std_ped
 signal = q[q > threshold]
 mean_signal_charge = signal.mean()
-gain = mean_signal_charge*1.e-12/1.602e-19/1e7
+gain  = mean_signal_charge*1.e-12/1.602e-19/1e7
+gain2 = q_good.mean()*1.e-12/1.602e-19/1e7
 print "Threshold set at %0.3f pC" % threshold
-print "Gain of the photo-sensor is %0.2f x 10^7\n" % gain
+print "Gain  of the photo-sensor is %0.2f x 10^7\n" % gain
+print "Gain2 of the photo-sensor is %0.2f x 10^7\n" % gain2
 
 # Now show the oscillioscope traces of a few events
-interesting = []
-interesting2 = []
-interesting3 = []
-
 subset1 = (q[(q > mu_ped      ) & (q < mu_ped + 0.5)]).sample(n=4).index
 subset2 = (q[(q > mu_ped + 0.5) & (q < mu_ped + 1.0)]).sample(n=4).index
 subset3 = (q[(q > mu_ped + 1.0) & (q < hiC         )]).sample(n=4).index
 
-# Plot some interesting events
+if len(subset3) > 0:
+  trace, trace_ax = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=True, figsize=(10, 10))
+  grouped_data.get_group(subset3[0]).plot(x='time',y='voltage'         ,ax=trace_ax, legend=False)
+  grouped_data.get_group(subset3[0]).plot(x='time',y='filtered_voltage',ax=trace_ax, legend=False)
+  trace_ax.set_xlabel("time [ns]")
+  trace_ax.set_ylabel("voltage [mV]")
+  trace.savefig('oscilloscope_traces_single.png')
+
 if len(subset1) > 0 and len(subset2) > 0 and len(subset3) > 0:
   trace, trace_ax = plt.subplots(nrows=3, ncols=4, sharex=True, sharey=True, figsize=(20, 10))
   for i in range(4):

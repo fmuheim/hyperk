@@ -209,8 +209,8 @@ nPoints = 5000
 window = 200e-9
 '''
 
-data_name     = '160122_120123_Ch1'
-data_ped_name = '160122_120304_Ch1'
+data_name     = '160519_111505_Ch1'
+data_ped_name = '160519_113501_Ch1'
 data                  = pd.read_csv(data_name    +'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 data_ped              = pd.read_csv(data_ped_name+'.csv',names=['nan1','nan2','nan3','time','voltage'],usecols=[3, 4],converters={'voltage':cfun2, 'time':cfun3})
 nPoints = 1000
