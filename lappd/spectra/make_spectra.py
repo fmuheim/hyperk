@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import matplotlib
 matplotlib.style.use('ggplot')
+#matplotlib.style.use('bmh')
 matplotlib.rcParams.update({'font.size': 12})
 
 def print_progress(count, n_events):
@@ -23,13 +24,12 @@ window = 40e-9
 data           = pd.read_pickle(data_name+'.pkl')
 data_ped       = pd.read_pickle(data_ped_name+'.pkl')
 
-n_events = len(data)/n_points
-n_events_ped = len(data_ped)/n_points
-
 charge_subset = []
 resistance = 50
 dt = (data['time'][1] - data['time'][0])/1e9 # to get back to seconds
 # V = IR => I = V/R; Q = int_t0^t1 I dt = int_t0^t1 V/R dt => Q = sum(V/R *Delta t)
+
+n_events = len(data)
 
 print "time interval:", dt
 print "number of events:", n_events
@@ -44,39 +44,53 @@ fall_time = 4e-9 #seconds
 fall_time_in_samples = int(fall_time/dt)
 
 filterTimeRange = True
+upper_time = 15.
 if filterTimeRange:
-    data = data[(np.abs(data.voltage)<90) & (data.time > 0) & (data.time < 50)]
-    data_ped = data_ped[(np.abs(data_ped.voltage)<90) & (data_ped.time > 0) & (data_ped.time < 50)]
+    data = data[(np.abs(data.filtered_voltage)<90) & (data.time > 0) & (data.time < upper_time)]
+    data_ped = data_ped[(np.abs(data_ped.filtered_voltage)<90) & (data_ped.time > 0) & (data_ped.time < upper_time)]
 else:
-    data = data[(np.abs(data.voltage)<50)]
-    data_ped = data_ped[(np.abs(data_ped.voltage)<50)]
+    data = data[(np.abs(data.filtered_voltage)<50)]
+    data_ped = data_ped[(np.abs(data_ped.filtered_voltage)<50)]
 
-mean_ped_voltage = data.filtered_voltage.mean() - 2.
-print "Baseline voltage of the pedestal", mean_ped_voltage
-min_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.min()
-max_TOT = data[(data.voltage < mean_ped_voltage)].groupby(['eventID']).time.max()
-diff = (max_TOT - min_TOT) > 0.7
-diff = diff[diff]
+mean_ped_voltage = data_ped.filtered_voltage.mean()
+print "Offet all voltages by the average baseline voltage of the pedestal:", mean_ped_voltage
+data_ped.voltage          = data_ped.voltage - mean_ped_voltage
+data_ped.filtered_voltage = data_ped.filtered_voltage - mean_ped_voltage
+data.voltage              = data    .voltage - mean_ped_voltage
+data.filtered_voltage     = data    .filtered_voltage - mean_ped_voltage
+
+voltage_threshold = -3.
+min_TOT = data[(data.filtered_voltage < voltage_threshold)].groupby(['eventID']).time.min()
+max_TOT = data[(data.filtered_voltage < voltage_threshold)].groupby(['eventID']).time.max()
+diff = (max_TOT - min_TOT) > 0.7 # 700ps
+diff = diff[diff] # only select the events where the above condition is true
 good_data = data[data.eventID.isin(diff.index)]
-print "Number of good pulses", len(diff)
+print "Number of good pulses above threshold (-1 mV) is:", len(diff), len(good_data), len(data)
+
+# restrict the good data to within the time above the threshold. Only integrate in this window
+#good_data = good_data[(good_data.time > min_TOT[good_data.eventID]) & (good_data.time < max_TOT[good_data.eventID])]
 
 # Group the data into events (i.e., separate triggers)
-grouped_data = data.groupby(['eventID'])
-grouped_data_ped = data_ped.groupby(['eventID'])
+grouped_data      = data     .groupby(['eventID'])
+grouped_data_ped  = data_ped .groupby(['eventID'])
 grouped_data_good = good_data.groupby(['eventID'])
 
 # Plot the time position and voltage of the max voltage in each event
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharey = True)
-max_voltages = data.loc[grouped_data.voltage.idxmin()]
-max_voltages.plot(kind='scatter',x='time',y='voltage', title = 'LED on', ax = axes[0])
-max_voltages_ped = data_ped.loc[grouped_data_ped.voltage.idxmin()]
-max_voltages_ped.plot(kind='scatter',x='time',y='voltage', title = 'LED off', ax = axes[1])
+max_voltages     = data    .loc[grouped_data    .filtered_voltage.idxmin()]
+max_voltages_ped = data_ped.loc[grouped_data_ped.filtered_voltage.idxmin()]
+max_voltages    .plot(kind='scatter',x='time',y='filtered_voltage', title = 'LED on',  ax = axes[0])
+max_voltages_ped.plot(kind='scatter',x='time',y='filtered_voltage', title = 'LED off', ax = axes[1])
+axes[0].set_xlabel("time [ns]")
+axes[1].set_xlabel("time [ns]")
+axes[0].set_ylabel("filtered voltage [mV]")
+axes[0].set_ylabel("")
 fig.savefig('max_voltage_vs_time.png')
 
 # Convert the voltage into a collected charge and sum over all voltages in the time window
-scale = -dt/resistance*1e12/1e3 #for picoColoumbs and to put voltage back in V
-q     = scale*grouped_data    .filtered_voltage.sum()
-q_ped = scale*grouped_data_ped.filtered_voltage.sum()
+scale  = -dt/resistance*1e12/1e3 #for picoColoumbs and to put voltage back in V
+q      = scale*grouped_data     .filtered_voltage.sum()
+q_ped  = scale*grouped_data_ped .filtered_voltage.sum()
 q_good = scale*grouped_data_good.filtered_voltage.sum()
 
 from scipy.stats import norm
@@ -87,19 +101,17 @@ print
 print "Fitted mean and standard deviation of the pedestal    : %0.3f, %0.3f  " % (mu, std)
 print "Calculated mean and standard deviation of the pedestal: %0.3f, %0.3f\n" % (mu_ped, std_ped)
 
-q = q - mu_ped
-q_ped = q_ped - mu_ped
-q_good = q_good - mu_ped
-
 # Plot the spectrum of collected charge
-loC =  -1
+loC = -1
 hiC =  4.
-nBins = 100
+nBins = 50
 width = float(hiC-loC)/nBins
 fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
-q.plot(kind='hist', title = 'LED on', bins = np.arange(loC, hiC + width, width), logy = True, color='r', alpha = 0.5, ax = axes[0])
-q_good.plot(kind='hist', title = 'LED on', bins = np.arange(loC, hiC + width, width), logy = True, color='g', alpha = 0.2, ax = axes[0])
-q_ped.plot(kind='hist', title = 'LED off', bins = np.arange(loC, hiC + width, width), logy = True, color='b', alpha = 0.5, ax = axes[1])
+axes[0].set_yscale('log')
+axes[1].set_yscale('log')
+q     .hist(histtype='step', bins = np.arange(loC, hiC + width, width), color='r', ax = axes[0])
+q_good.hist(histtype='step', bins = np.arange(loC, hiC + width, width), color='g', ax = axes[0])
+q_ped .hist(histtype='step', bins = np.arange(loC, hiC + width, width), color='b', ax = axes[1])
 
 # uncomment these lines if you want to plot the fitted Gaussian
 #x = np.linspace(loC, hiC, nBins)
@@ -118,26 +130,24 @@ fig.savefig('charge_spectrum.png')
 
 # Compute the mean of the collected charge above some threshold (which is defined in terms of the pedestal) to compute the gain
 from math import sqrt
-'''
 threshold = 3*std_ped
 signal = q[q > threshold]
 mean_signal_charge = signal.mean()
-gain  = mean_signal_charge*1.e-12/1.602e-19/1e7
-gain_err = mean_signal_charge*1.e-12/1.602e-19/1e7/sqrt(len(signal))
-gain2 = q_good.mean()*1.e-12/1.602e-19/1e7
-'''
-gain3 = q_good.sum()*1.e-12/1.602e-19/1e7/len(q_good)
-gain3_err = q_good.sum()*1.e-12/1.602e-19/1e7/len(q_good)/sqrt(len(q_good))
+gain0     = mean_signal_charge*1.e-12/1.602e-19/1e7
+gain0_err = mean_signal_charge*1.e-12/1.602e-19/1e7/sqrt(len(signal))
+gain      = q_good.mean()*1.e-12/1.602e-19/1e7
+gain_err  = gain/sqrt(len(q_good))
 
 #print "Threshold set at %0.3f pC" % threshold
 #print "Gain  of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain, gain_err)
 #print "Gain2 of the photo-sensor is %0.3f x 10^7\n" % gain2
-print "Gain of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain3, gain3_err)
+print "Using time-over-threshold:             gain of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain, gain_err)
+print "Using 3-sigma threshold from pedestal: gain of the photo-sensor is (%0.3f +- %0.3f) x 10^7\n" % (gain0, gain0_err)
 
 # Now show the oscillioscope traces of a few events
-subset1 = (q[(q > mu_ped      ) & (q < mu_ped + 0.5)]).sample(n=4).index
-subset2 = (q[(q > mu_ped + 0.5) & (q < mu_ped + 1.0)]).sample(n=4).index
-subset3 = (q[(q > mu_ped + 1.0) & (q < hiC         )]).sample(n=4).index
+subset1 = (q[(q > 0.3) & (q < 0.5)]).sample(n=4).index
+subset2 = (q[(q > 0.5) & (q < 1.0)]).sample(n=4).index
+subset3 = (q[(q > 1.0) & (q < hiC)]).sample(n=4).index
 
 if len(subset3) > 0:
   trace, trace_ax = plt.subplots(nrows=1, ncols=1, sharex=True, sharey=True, figsize=(10, 10))
@@ -156,6 +166,12 @@ if len(subset1) > 0 and len(subset2) > 0 and len(subset3) > 0:
         grouped_data.get_group(subset2[i]).plot(x='time',y='filtered_voltage',ax=trace_ax[1,i], legend=False)
         grouped_data.get_group(subset3[i]).plot(x='time',y='voltage'         ,ax=trace_ax[2,i], legend=False)
         grouped_data.get_group(subset3[i]).plot(x='time',y='filtered_voltage',ax=trace_ax[2,i], legend=False)
+        trace_ax[0,i].axvline(min_TOT[subset1[i]])
+        trace_ax[0,i].axvline(max_TOT[subset1[i]])
+        trace_ax[1,i].axvline(min_TOT[subset2[i]])
+        trace_ax[1,i].axvline(max_TOT[subset2[i]])
+        trace_ax[2,i].axvline(min_TOT[subset3[i]])
+        trace_ax[2,i].axvline(max_TOT[subset3[i]])
         '''
         # This plots the points defining the integration region
         data[bounds[interesting [k ]][0]:bounds[interesting [k ]][0]+1].plot(x='time',y='filtered_voltage',ax=axes[0,i], legend=False, style='o')
