@@ -7,14 +7,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.rc('font', family='serif', size=80)
 import pylab
-get_ipython().magic(u'matplotlib inline')
 pylab.rcParams['figure.figsize'] = 16, 8
 
 
 # In[3]:
 
 from sklearn import linear_model, ensemble
+import sys
+sys.argv.append( '-b-' )
 import ROOT
+ROOT.gROOT.SetBatch(True)
 from root_numpy import root2array, tree2array, fill_hist
 
 
@@ -28,7 +30,7 @@ intree = rfile.Get('nu_eneNEW')
 
 E_threshold = 100
 arr_lo_E = tree2array(intree,selection='trueKE<'+str(E_threshold))
-arr_hi_E = tree2array(intree,selection='trueKE>'+str(E_threshold))
+arr_hi_E = tree2array(intree,selection='trueKE>0')#+str(E_threshold))
 
 
 # In[7]:
@@ -66,7 +68,7 @@ ax2.set_ylabel("recoKE - trueKE [MeV]")
 
 chain = ROOT.TChain('nu_eneNEW')
 for i in range(1040,1099):
-    chain.Add('/Disk/ds-sopa-group/PPE/titus/ts-WChRecoSandBox/scripts/editing_ene/outputs/nu_numu_'+str(i)+'_CCQE_12in_energy_studies_recoquant_tree_NEWlookups.root')
+    chain.Add('/Disk/ds-sopa-group/PPE/titus/ts-WChRecoSandBox/scripts/editing_ene/outputs/nu_numu_'+str(i)+'_CCQE_12in_energy_studies_recoquant_tree_NEWlookupsB_for_training.root')
 test_data_lo_E = tree2array(chain, selection='trueKE<'+str(E_threshold))
 test_data_hi_E = tree2array(chain, selection='trueKE>'+str(E_threshold))
 
@@ -93,6 +95,13 @@ ax2.set_ylim((-5000,1000))
 ax2.set_xlabel("trueKE [MeV]")
 ax2.set_ylabel("recoKE - trueKE [MeV]")
 
+test_data_recoKE_hi_E = clf_hi_E.predict(test_data_reduced_hi_E_n)
+outputFile = ROOT.TFile.Open("scikit_reco.root", "RECREATE")
+outputTuple = ROOT.TNtuple("tuple", "tuple", "trueKE:recoKE")
+for i in range(len(test_data_recoKE_hi_E)):
+    outputTuple.Fill(test_data_trueKE_hi_E[i], test_data_recoKE_hi_E[i])
+outputTuple.Write()
+outputFile.Close()
 
 # In[ ]:
 
@@ -119,7 +128,7 @@ hist_SGD_lo_E.Draw()
 c.cd(2)
 hist_SGD_hi_E.Draw()
 c.Draw()
-
+c.SaveAs("plots/1.png")
 
 # In[15]:
 
@@ -137,6 +146,7 @@ profile_SGD_hi_E.Draw()
 c1.Draw()
 c1.SetLogy(0)
 c1.Draw()
+c1.SaveAs("plots/2.png")
 
 
 # In[16]:
@@ -207,6 +217,7 @@ hist_GBR_abs_hi_E.Draw()
 hist_GBR_abs_hi_E.GetXaxis().SetTitle('true KE [MeV]')
 hist_GBR_abs_hi_E.GetYaxis().SetTitle('abs(#Delta E)/E')
 canvas.Draw()
+canvas.SaveAs("plots/3.png")
 
 
 # In[31]:
@@ -234,6 +245,7 @@ profile_GBR_abs_hi_E.SetMaximum(1)
 profile_GBR_abs_hi_E.GetXaxis().SetTitle('true KE [MeV]')
 profile_GBR_abs_hi_E.GetYaxis().SetTitle('abs(#Delta E)/E')
 canvas_prof.Draw()
+canvas_prof.SaveAs("plots/4.png")
 
 
 # In[24]:
@@ -258,6 +270,7 @@ hist_trueKE.GetXaxis().SetTitle('true or reco KE [MeV]')
 hist_trueKE.GetYaxis().SetTitle('Events')
 c2.SetLogy()
 c2.Draw()
+c2.SaveAs("plots/5.png")
 
 
 # In[ ]:
