@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.cross_validation import cross_val_score
+from sklearn.model_selection import cross_val_score, cross_val_predict
 import ROOT
 ROOT.gROOT.SetBatch(True)
 from root_numpy import root2array, tree2array, fill_hist
@@ -25,26 +25,37 @@ data_target    = data['trueKE']/1e3
 def base_model():
     model = Sequential()
     model.add(Dense(10, input_dim=6, init='uniform', activation='relu'))
-    model.add(Dense(10, activation='relu'))
-    model.add(Dense(10, activation='relu'))
-    #model.add(Dense(10))
-    #model.add(Activation('relu'))
+    model.add(Dense(6, activation='relu'))
+    #model.add(Dense(4, activation='relu'))
+    #model.add(Dense(2, activation='relu'))
     model.add(Dense(1))
     model.compile(loss='mse',optimizer='adam')
     return model
 
 #history = base_model().fit(data_reduced_n, data_target, validation_split = 0.1, nb_epoch=200)
 
-model = KerasRegressor(build_fn=base_model, nb_epoch=200, batch_size=200, verbose=0)
-scores = cross_val_score(model, data_reduced_n, data_target, cv=5)
+model = KerasRegressor(build_fn=base_model, nb_epoch=100, batch_size=2000, verbose=0)
+scores = cross_val_score(model, data_reduced_n, data_target, cv=5, scoring='neg_mean_squared_error')
 print scores
-print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+print("MSE: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
-'''
-f, ax2 = plt.subplots(1, 1)
-ax2.scatter(test_data_trueKE_hi_E,clf_hi_E.predict(test_data_reduced_hi_E_n)-test_data_trueKE_hi_E)
-ax2.set_ylim((-5000,1000))
-ax2.set_xlabel("trueKE [MeV]")
-ax2.set_ylabel("recoKE - trueKE [MeV]")
-plt.savefig("comparision.pdf")
-'''
+predicted = cross_val_predict(model, data_reduced_n, data_target, cv=5)
+
+fig, ax = plt.subplots()
+ax.scatter(data_target, predicted)
+ax.plot([data_target.min(), data_target.max()], [data_target.min(), data_target.max()], 'k--', lw=4)
+ax.set_xlabel('True KE [GeV]')
+ax.set_ylabel('Predicted KE [GeV]')
+ax.set_xlim([data_target.min()*0.9, data_target.max()*1.1])
+ax.set_ylim([data_target.min()*0.9, data_target.max()*1.1])
+plt.savefig("keras_cross_val_comparision.pdf")
+
+hist = ROOT.TH1D("hist","hist", 100, -1, 1)
+diff = (data_target - predicted)/data_target
+fill_hist(hist, diff)
+hist.GetXaxis().SetTitle("#DeltaE/E")
+canvas = ROOT.TCanvas()
+hist.Draw()
+canvas.SaveAs("keras_cross_val_DeltaE.pdf")
+
+
